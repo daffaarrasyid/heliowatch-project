@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-05-03 17:11:00 WIB",
+  "system_status": {
+    "status": "Operational",
+    "detail": "All systems normal",
+    "color": "green"
+  },
+  "kpi_summary": {
+    "active_alerts_count": 3,
+    "critical_count": 2,
+    "high_count": 1,
+    "critical_actions": 1,
+    "deferred_loads_count": 3,
+    "deferred_loads_kw": 18.7
+  },
+  "active_alerts": [
+    {
+      "id": 1, "type": "High ramp risk detected", "description": "Ramp risk 0.85 exceeds safe threshold (0.70)", "severity": "Critical", "time_ago": "2 min ago", "color": "red"
+    },
+    {
+      "id": 2, "type": "Low battery reserve margin", "description": "Battery reserve margin at 12% (below 15% threshold)", "severity": "Critical", "time_ago": "5 min ago", "color": "red"
+    },
+    {
+      "id": 3, "type": "Forecasted PV drop this afternoon", "description": "Cloud cover increase may reduce PV output by ~18%", "severity": "High", "time_ago": "12 min ago", "color": "yellow"
+    }
+  ],
+  "primary_action": {
+    "title": "Discharge battery to support current load",
+    "description": "Discharge 8.0 kW for the next 60 minutes",
+    "est_effect": "Reduce ramp risk to 0.62 and increase reserve margin to 19%"
+  },
+  "alternative_actions": [
+    {"title": "Defer irrigation pumps (5.0 kW)", "est_effect": "Reduce ramp risk to 0.65"},
+    {"title": "Reduce cooling setpoints by 1°C", "est_effect": "Reduce ramp risk to 0.68"}
+  ],
+  "operator_instructions": [
+    {"step": "Execute primary action", "detail": "Discharge battery 8.0 kW for 60 min"},
+    {"step": "Monitor system response", "detail": "Verify ramp risk < 0.70"},
+    {"step": "Reassess within 30 minutes", "detail": "Check updated forecasts and metrics"},
+    {"step": "Consider follow-up actions", "detail": "Based on system conditions"}
+  ],
+  "affected_loads": [
+    {"name": "Irrigation Pumps", "power": "5.0 kW", "status": "Defer", "color": "indigo"},
+    {"name": "Laundry Facility", "power": "3.2 kW", "status": "Defer", "color": "indigo"},
+    {"name": "Community Center AC", "power": "2.5 kW", "status": "At Risk", "color": "orange"},
+    {"name": "Water Treatment", "power": "1.8 kW", "status": "At Risk", "color": "orange"}
+  ],
+  "decision_horizon": [
+    {"time": "Now", "ramp_risk": 0.85, "reserve_margin": 12, "pv_forecast": 12.6},
+    {"time": "+1h", "ramp_risk": 0.78, "reserve_margin": 14, "pv_forecast": 13.1},
+    {"time": "+2h", "ramp_risk": 0.62, "reserve_margin": 19, "pv_forecast": 14.2},
+    {"time": "+3h", "ramp_risk": 0.58, "reserve_margin": 22, "pv_forecast": 15.0},
+    {"time": "+4h", "ramp_risk": 0.54, "reserve_margin": 24, "pv_forecast": 13.8},
+    {"time": "+5h", "ramp_risk": 0.48, "reserve_margin": 28, "pv_forecast": 9.2},
+    {"time": "+6h", "ramp_risk": 0.45, "reserve_margin": 31, "pv_forecast": 3.1}
+  ],
+  "technical_basis": {
+    "ramp_risk": 0.85,
+    "battery_soc": 48,
+    "est_ens": 1.45,
+    "net_margin": -2.1
+  },
+  "community_impact": {
+    "title": "Minimize impact to critical community services.",
+    "subtitle": "No impact to critical services",
+    "description": "Water, health center, and communications remain protected."
+  }
+}
