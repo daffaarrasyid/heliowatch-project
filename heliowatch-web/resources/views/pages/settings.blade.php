@@ -659,7 +659,7 @@
                     alert.style.transform = 'translateY(-10px)';
                     setTimeout(() => alert.remove(), 500); // Remove from DOM after fade out
                 });
-            }, 4000); 
+            }, 4000);
         });
 
         // Drag Container Logic
@@ -738,79 +738,53 @@
         reorderInitialPriorities();
     </script>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            let initialLat = parseFloat(document.getElementById('input-lat').value) || -6.5569;
-            let initialLng = parseFloat(document.getElementById('input-lng').value) || 106.7238;
+            // Ambil elemen input
+            var latInput = document.getElementById('input-lat');
+            var lngInput = document.getElementById('input-lng');
 
-            const map = L.map('map').setView([initialLat, initialLng], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
-            let marker = L.marker([initialLat, initialLng]).addTo(map);
+            // Set koordinat awal dari value input
+            var startLat = parseFloat(latInput.value) || -6.5569;
+            var startLng = parseFloat(lngInput.value) || 106.7238;
 
-            // Auto-detect timezone from coordinates
-            async function autoDetectTimezone(lat, lng) {
-                try {
-                    const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&timezone=auto`);
-                    const data = await response.json();
-                    if (data.timezone) {
-                        const tzSelect = document.getElementById('timezone-select');
-                        let optionExists = Array.from(tzSelect.options).some(opt => opt.value === data.timezone);
-                        if (optionExists) {
-                            tzSelect.value = data.timezone;
-                        } else {
-                            const newOption = new Option(`Auto Detected - ${data.timezone}`, data.timezone, true, true);
-                            tzSelect.add(newOption);
-                        }
-                        tzSelect.classList.add('bg-indigo-100', 'dark:bg-indigo-900/50');
-                        setTimeout(() => tzSelect.classList.remove('bg-indigo-100', 'dark:bg-indigo-900/50'), 1000);
-                    }
-                } catch (error) {
-                    console.error("Timezone detection error:", error);
-                }
-            }
+            // Inisialisasi Peta
+            var map = L.map('map').setView([startLat, startLng], 13);
 
-            // Event 1: Saat Peta Diklik
-            map.on('click', function(e) {
-                let lat = e.latlng.lat.toFixed(6);
-                let lng = e.latlng.lng.toFixed(6);
+            // Load gambar peta dari OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
 
-                marker.setLatLng([lat, lng]);
-                document.getElementById('input-lat').value = lat;
-                document.getElementById('input-lng').value = lng;
+            // Tambahkan Pin/Marker yang bisa digeser
+            var marker = L.marker([startLat, startLng], {
+                draggable: true
+            }).addTo(map);
 
-            // Update marker when map clicked
-            map.on('click', function(e) {
-                let lat = e.latlng.lat.toFixed(6);
-                let lng = e.latlng.lng.toFixed(6);
-                marker.setLatLng([lat, lng]);
-                document.getElementById('input-lat').value = lat;
-                document.getElementById('input-lng').value = lng;
-                autoDetectTimezone(lat, lng);
+            // Event 1: Kalau Pin digeser, angka di input otomatis berubah
+            marker.on('dragend', function(e) {
+                var position = marker.getLatLng();
+                latInput.value = position.lat.toFixed(6);
+                lngInput.value = position.lng.toFixed(6);
             });
 
-            // Update map when coordinates typed
+            // Event 2: Kalau angka di input diketik manual, Pin otomatis pindah
             function updateMapFromInput() {
-                let lat = parseFloat(document.getElementById('input-lat').value);
-                let lng = parseFloat(document.getElementById('input-lng').value);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    marker.setLatLng([lat, lng]);
-                    map.setView([lat, lng], map.getZoom());
-                    autoDetectTimezone(lat, lng);
+                var newLat = parseFloat(latInput.value);
+                var newLng = parseFloat(lngInput.value);
+                if (!isNaN(newLat) && !isNaN(newLng)) {
+                    var newPos = new L.LatLng(newLat, newLng);
+                    marker.setLatLng(newPos);
+                    map.flyTo(newPos, 13);
                 }
             }
 
-            // Debounce input events to avoid API spam
-            let typingTimer;
-            const inputLat = document.getElementById('input-lat');
-            const inputLng = document.getElementById('input-lng');
-            [inputLat, inputLng].forEach(input => {
-                input.addEventListener('input', () => {
-                    clearTimeout(typingTimer);
-                    typingTimer = setTimeout(updateMapFromInput, 800);
-                });
-            });
-
-            setTimeout(() => map.invalidateSize(), 500);
+            latInput.addEventListener('input', updateMapFromInput);
+            lngInput.addEventListener('input', updateMapFromInput);
         });
     </script>
 @endsection

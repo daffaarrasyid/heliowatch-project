@@ -52,7 +52,7 @@ def predict_24_hours(latitude=-7.19, longitude=108.03, base_temp=24.0, scenario=
         
         corrected_forecast = 0.0
         if ai_model is not None:
-            corrected_forecast = ai_model.predict(df_future)[0]
+            corrected_forecast = float(ai_model.predict(df_future)[0])
         
         if corrected_forecast < 5 and radiasi_api[i] == 0:
             corrected_forecast = 0.0
