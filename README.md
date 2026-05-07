@@ -12,7 +12,7 @@ Repositori ini memuat dua layanan utama:
 
 ---
 
-## 💻 Persyaratan Sistem (Prerequisites)
+## Persyaratan Sistem (Prerequisites)
 
 Pastikan sistem operasi Anda (Windows/Mac/Linux) sudah memenuhi persyaratan berikut:
 
@@ -24,7 +24,7 @@ Pastikan sistem operasi Anda (Windows/Mac/Linux) sudah memenuhi persyaratan beri
 
 ---
 
-## 🚀 Panduan Instalasi Lokal
+## Panduan Instalasi Lokal
 
 ### Langkah 1: Kloning Repositori
 
