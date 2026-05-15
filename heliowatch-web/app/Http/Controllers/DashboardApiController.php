@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http; // Wajib dipanggil
 use Carbon\Carbon;
 use App\Models\Setting;
 
@@ -10,7 +11,6 @@ class DashboardApiController extends Controller
 {
     public function getLiveData()
     {
-        // Ambil Treshold dan Setting lainnya dari database dengan Cache untuk performa
         $settings = Cache::rememberForever('global_settings', function () {
             try {
                 return Setting::pluck('value', 'key')->toArray();
@@ -19,46 +19,41 @@ class DashboardApiController extends Controller
             }
         });
 
-        // Setel patokan bahaya (Fallback jika setting kosong: Ramp = 0.70, SoC = 30%)
         $rampThreshold = (float) ($settings['ramp_risk_threshold'] ?? 0.70);
         $socWarningThreshold = (int) ($settings['soc_warning_threshold'] ?? 30);
         $currentTimezone = $settings['timezone'] ?? 'Asia/Jakarta';
         $serverTime = Carbon::now($currentTimezone)->format('h:i A');
 
-        // Simulasi data sensor mentah
-        $pvOutput = rand(100, 180) / 10; // kW (10.0 - 18.0)
-        $currentLoad = rand(80, 200) / 10; // kW (8.0 - 20.0)
-        $batterySoc = rand(10, 100); // 10% - 100%
-        $rampRisk = rand(10, 95) / 100; // 0.10 - 0.95
-        $isCharging = $pvOutput > $currentLoad;
-        $powerDifference = abs($pvOutput - $currentLoad);
+        try {
+            // MENGAMBIL DATA ASLI DARI PYTHON AI (Bukan rand() lagi)
+            $response = Http::timeout(5)->get('http://127.0.0.1:8000/api/dashboard-kpi', [
+                'ramp_threshold' => $rampThreshold,
+                'soc_warning' => $socWarningThreshold,
+                'scenario' => 'normal'
+            ]);
 
-        // Logika Alert: Ramp Risk dianggap bahaya kalau melebihi treshold, SoC dianggap bahaya kalau di bawah treshold
-        $isRampAlert = $rampRisk >= $rampThreshold;
-        $isSocAlert = $batterySoc <= $socWarningThreshold;
+            if ($response->successful()) {
+                $aiData = $response->json()['data'];
 
-        // Bikin struktur data yang rapi untuk dikirim ke frontend
-        $data = [
-            'status' => 'success',
-            'data' => [
-                'server_time' => $serverTime,
-                'reliability_score' => rand(85, 99), // Skor 85 - 99
-                'ramp_risk' => number_format($rampRisk, 2),
-                'battery_margin' => rand(15, 40),
-                'energy_not_served' => number_format(rand(0, 50) / 100, 2), // 0.00 - 0.50
-                'is_ramp_alert' => $isRampAlert,
-                'is_soc_alert' => $isSocAlert,
-                'sensor_snapshot' => [
-                    'current_pv_output' => number_format($pvOutput, 1),
-                    'current_load' => number_format($currentLoad, 1),
-                    'battery_soc' => $batterySoc,
-                    'charging_power' => $isCharging ? number_format($powerDifference, 1) : "0.0",
-                    'discharging_power' => !$isCharging ? number_format($powerDifference, 1) : "0.0",
-                ]
-            ]
-        ];
-
-        // Kirim data sebagai JSON response
-        return response()->json($data);
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'server_time' => $serverTime,
+                        'reliability_score' => $aiData['reliability_score'],
+                        'ramp_risk' => $aiData['ramp_risk'],
+                        'battery_margin' => $aiData['battery_margin'],
+                        'energy_not_served' => $aiData['energy_not_served'],
+                        'is_ramp_alert' => $aiData['is_ramp_alert'],
+                        'is_soc_alert' => $aiData['is_soc_alert'],
+                        'sensor_snapshot' => $aiData['sensor_snapshot'],
+                        // --- MENANGKAP CONFIDENCE SCORE DARI PYTHON ---
+                        'ai_confidence' => $aiData['ai_confidence'] ?? 95.0,
+                        'lead_time_horizon' => $aiData['lead_time_horizon'] ?? '1 Hour (t+60)'
+                    ]
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'AI Engine Offline'], 500);
+        }
     }
 }

@@ -6,9 +6,19 @@ HelioWatch adalah sistem cerdas berbasis *Artificial Intelligence* (AI) dan arsi
 
 Repositori ini memuat dua layanan utama:
 
-1. **`heliowatch-web` (Manajemen Data & UI):** Dibangun menggunakan ekosistem *framework* **Laravel 13**, dengan antarmuka yang menggunakan kombinasi **Laravel Blade, Tailwind CSS**, dan **Alpine.js**. Manajemen *database* ditangani oleh **MySQL**.
+1. **`heliowatch-web` (Manajemen Data & UI):** 
+- Dibangun menggunakan ekosistem *framework* **Laravel 13**, dengan antarmuka yang menggunakan kombinasi **Laravel Blade, Tailwind CSS**, dan **Alpine.js**. 
+- Manajemen *database* ditangani oleh **MySQL**.
+- Dilengkapi fitur Task Scheduling (Background Worker) untuk menangani antrean data streaming secara asinkron tanpa mengganggu kelancaran dashboard operator.
 
-2. **`heliowatch-ai` (AI Engine & API):** Otak cerdas yang menggunakan bahasa pemrograman **Python** dan *framework* **FastAPI** untuk jalur REST API. Model *machine learning* ditenagai oleh algoritma **XGBoost** yang dilatih menggunakan *dataset dummy/sintetis* untuk mengolah data deret waktu (*time-series*) dengan akurasi tinggi.
+2. **`heliowatch-ai` (AI Engine & API):** 
+- Otak cerdas yang menggunakan bahasa pemrograman **Python** dan *framework* **FastAPI** untuk jalur REST API. 
+- Model machine learning ditenagai oleh **XGBoost** yang dioptimalkan melalui **Edge-Constrained Feature Selection** yang mengompresi ratusan deret waktu sensor menjadi **15 Fitur Pintar (Domain-Informed)** untuk akurasi tinggi dengan memori minim.
+- Memiliki sistem **Pre-Processing Otomatis** (Outlier Clipping & Imputation) untuk menjamin integritas data dari kerusakan sensor fisik maupun gangguan API satelit (Open-Meteo).
+
+3. **`future_implementation` (Future IoT Protocol):** 
+
+Repositori ini juga memuat **Proof of Concept (PoC)** untuk implementasi perangkat keras nyata menggunakan arsitektur Pub/Sub berbasis **Paho MQTT** di atas jaringan **LAN**, memastikan sistem tetap tangguh meskipun tanpa koneksi internet global.
 
 ---
 

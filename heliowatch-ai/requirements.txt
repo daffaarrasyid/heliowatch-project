@@ -4,3 +4,6 @@ pandas
 xgboost
 scikit-learn
 requests
+
+# --- Future Implementation (IoT Edge PoC) ---
+paho-mqtt

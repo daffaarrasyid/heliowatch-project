@@ -25,5 +25,5 @@ Route::get('/settings', [App\Http\Controllers\SettingController::class, 'index']
 Route::post('/settings', [App\Http\Controllers\SettingController::class, 'update'])->name('settings.update');
 Route::post('/settings/reset', [App\Http\Controllers\SettingController::class, 'reset'])->name('settings.reset');
 
-// Live data
+// Live data 
 Route::get('/live-data', [DashboardApiController::class, 'getLiveData'])->name('api.live');
