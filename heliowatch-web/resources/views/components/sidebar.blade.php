@@ -2,7 +2,8 @@
     <div>
         <div class="px-6 mb-8 relative flex justify-center items-center">
             <!-- Logo -->
-            <img src="{{ asset('img/logo-helio.png') }}" alt="HelioWatch Logo" class="w-40 mx-auto cursor-pointer transition-transform duration-300 hover:scale-105">
+            {{-- <img src="{{ asset('img/logo-helio.png') }}" alt="HelioWatch Logo" class="w-40 mx-auto cursor-pointer transition-transform duration-300 hover:scale-105"> --}}
+            <img src="data:image/png;base64, {{ base64_encode(file_get_contents(public_path('img/logo-helio.png'))) }}" alt="HelioWatch Logo" class="w-40 mx-auto cursor-pointer transition-transform duration-300 hover:scale-105">
             
             <!-- Close Button (Mobile) -->
             <button onclick="toggleSidebar()" class="lg:hidden absolute right-6 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">

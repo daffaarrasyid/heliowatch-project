@@ -62,58 +62,64 @@ def extract_15_optimized_features(safe_irradiance, safe_temp, hour_decimal, batt
         'low_battery_signal': float(low_battery_signal)
     }
 
-# Fungsi 1: Prediksi Daya 24 Jam dengan Skenario
-def predict_24_hours(latitude=-7.19, longitude=108.03, base_temp=24.0, scenario="normal"):
+# Fungsi 1: Prediksi Daya 24 Jam dengan Skenario (VERSI DUMMY REALISTIS UNTUK DEMO)
+def predict_24_hours(latitude=-10.89, longitude=123.01, base_temp=28.0, scenario="normal"):
     daily_predictions = {}
     
-    try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,shortwave_radiation&timezone=Asia%2FJakarta&forecast_days=1"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        suhu_api = data['hourly']['temperature_2m']
-        radiasi_api = data['hourly']['shortwave_radiation']
-    except Exception as e:
-        print(f"Error fetching weather data: {e}")
-        suhu_api = [base_temp] * 24
-        radiasi_api = [max(0, 800 * math.sin(math.pi * (h - 5.5) / 13)) if 5 <= h <= 18 else 0 for h in range(24)]
-
-    # Modifikasi data berdasarkan skenario simulasi dari Laravel
-    for i in range(24):
-        # Skenario Awan Tebal
-        if scenario == "cloud_cover" and 10 <= i <= 14:
-            radiasi_api[i] = radiasi_api[i] * 0.2
+    suhu_api = []
+    radiasi_api = []
+    
+    for h in range(24):
+        # 1. Suhu Natural (Puncak panas di jam 14:00 siang)
+        if 6 <= h <= 18:
+            # Menggunakan sinus yang digeser agar puncak di jam 14
+            suhu_palsu = base_temp + (6 * math.sin(math.pi * (h - 6) / 12))
+        else:
+            suhu_palsu = base_temp - 1.5
             
-        # # ========================================================
-        # # --- SIMULASI SENSOR RUSAK (BUAT NGETES REVISI #4) ---
-        # if i == 12: 
-        #     radiasi_api[i] = 99999.0  # Jam 12 siang sensor error ngirim data 99 ribu W/m2!
-        # if i == 13: 
-        #     radiasi_api[i] = None     # Jam 13 siang sensor mati tertutup burung (data kosong)
-        # # ========================================================
+        # Noise suhu sangat kecil agar halus
+        suhu_api.append(round(suhu_palsu + random.uniform(-0.2, 0.2), 1))
         
+        # 2. Radiasi Matahari (Puncak di jam 12:00 siang)
+        if 6 <= h <= 17:
+            radiasi_dasar = 950 * math.sin(math.pi * (h - 6) / 11)
+            # Noise radiasi sedang, karena tutupan awan tipis wajar terjadi
+            radiasi_palsu = radiasi_dasar + random.uniform(-15, 20)
+        else:
+            radiasi_palsu = 0.0 # Malam hari mutlak 0
+            
+        radiasi_api.append(max(0.0, round(radiasi_palsu, 1)))
+
+    # Modifikasi data berdasarkan skenario simulasi
+    for i in range(24):
+
+        # --- CONTROLLED CHAOS (SKENARIO NORMAL) ---
+        # Kasih peluang 15% terjadi awan tebal dadakan di siang hari
+        if scenario == "normal" and 7 <= i <= 16:
+            if random.random() < 0.15:  
+                radiasi_api[i] = radiasi_api[i] * random.uniform(0.1, 0.3) 
+
+        # --- SKENARIO SIMULASI DARI WEB ---
+        if scenario == "cloud_cover" and 8 <= i <= 15:
+            radiasi_api[i] = radiasi_api[i] * 0.1  # Radiasi sisa 10%
+
         jam_str = f"{i:02d}:00" 
         
-        # --- REVISI #4: PEMBERSIHAN DATA ---
+        # Pembersihan Data & Fitur AI (Tetap sama seperti sebelumnya)
         safe_irradiance = clean_sensor_data(radiasi_api[i], min_val=0, max_val=1200, fallback_value=0)
         safe_temp = clean_sensor_data(suhu_api[i], min_val=15, max_val=45, fallback_value=27.0)
         
-        # Prediksi Physical (Baseline)
         physical_forecast = safe_irradiance * 0.015
-        
-        # --- REVISI #3: PANGGIL 15 FITUR OPTIMAL ---
         optimized_features = extract_15_optimized_features(safe_irradiance, safe_temp, float(i))
-
-        # # Mengecek fitur yang sudah diekstraksi menjadi 15 fitur.
-        # print(f"DEBUG: Mengirim {len(optimized_features)} fitur ke XGBoost: {list(optimized_features.keys())}")
         
-        # Masukkan 15 fitur ke dalam DataFrame untuk ditebak oleh XGBoost baru
         df_future = pd.DataFrame([optimized_features])
         
         corrected_forecast = 0.0
         if ai_model is not None:
             corrected_forecast = float(ai_model.predict(df_future)[0])
         
-        if corrected_forecast < 5 and safe_irradiance == 0:
+        # Memastikan tidak ada sisa tebakan daya di malam hari
+        if safe_irradiance <= 5:
             corrected_forecast = 0.0
             
         daily_predictions[jam_str] = {
@@ -163,29 +169,60 @@ def calculate_dashboard_kpi(current_power, next_hour_power, battery_soc, current
 def get_current_sensor_data(scenario="normal"):
     jam_sekarang = datetime.now().hour
     
-    # Base angka (Patokan)
-    soc_base = 48 if 7 <= jam_sekarang <= 16 else 35
-    load_base = 8.9 if scenario != "load_spike" else 15.5
-    
-    # Tambahkan efek "goyang/noise" pakai random biar seolah-olah sensor asli
-    soc = round(soc_base + random.uniform(-0.5, 0.5), 1) 
-    load = round(load_base + random.uniform(-0.3, 0.6), 1)
-
-    charging_base = 2.1 if 7 <= jam_sekarang <= 16 else 0.0
-    discharging_base = 0.0 if 7 <= jam_sekarang <= 16 else 1.5
-
-    # Kalau spike, discharge juga naik
+    # 1. Logika PV Output Realistis (Ikut siklus matahari)
+    if 6 <= jam_sekarang <= 17:
+        pv_base = 15.0 * math.sin(math.pi * (jam_sekarang - 6) / 11)
+        pv_output = round(pv_base + random.uniform(-0.5, 0.5), 1)
+    else:
+        pv_output = 0.0  # Malam hari PV mutlak mati
+        
+    # 2. Logika Beban (Load) - Malam hari lebih tinggi karena lampu nyala
+    if 18 <= jam_sekarang <= 22:
+        load_base = 12.5 
+    elif 23 <= jam_sekarang or jam_sekarang <= 4:
+        load_base = 6.0
+    else:
+        load_base = 9.5
+        
     if scenario == "load_spike":
-        discharging_base = 4.0
+        load_base += 6.0
+        
+    load = round(load_base + random.uniform(-0.3, 0.4), 1)
 
-    charging = round(max(0.0, charging_base + random.uniform(-0.1, 0.1)), 1)
-    discharging = round(max(0.0, discharging_base + random.uniform(-0.1, 0.2)), 1)
+    # 3. Logika Charging/Discharging Baterai (Sesuai surplus daya)
+    surplus_daya = pv_output - load
+    
+    if surplus_daya > 0:
+        # Matahari terang, PV cukup untuk nutup beban, sisanya ngecas baterai
+        charging = round(surplus_daya * 0.8, 1)  # Efisiensi charge 80%
+        discharging = 0.0
+    else:
+        # Malam hari atau mendung, baterai harus tekor nombokin beban
+        charging = 0.0
+        discharging = round(abs(surplus_daya), 1)
+
+    # 4. Logika Baterai SOC (State of Charge)
+    # Pagi hari rendah, siang ngecas penuh, malam berkurang
+    if 0 <= jam_sekarang < 6:
+        soc_base = 45 - (jam_sekarang * 3)
+    elif 6 <= jam_sekarang < 15:
+        soc_base = 30 + ((jam_sekarang - 6) * 7)
+    elif 15 <= jam_sekarang < 18:
+        soc_base = 95
+    else:
+        soc_base = 95 - ((jam_sekarang - 18) * 6)
+        
+    soc_base = max(10, min(100, soc_base)) # Tahan di angka rasional (10% - 100%)
+
+    # --- CONTROLLED CHAOS (ANOMALI BATERAI) ---
+    # Peluang 15% baterai tiba-tiba drop ngaco biar memicu Alert Merah
+    if scenario == "normal" and random.random() < 0.15:
+        soc_base -= random.uniform(15, 20)
+        
+    soc = round(soc_base + random.uniform(-0.5, 0.5), 1)
     
     capacity = 52.0
     usable = round((soc / 100) * capacity, 1)
-    
-    # PV Output juga goyang dikit
-    pv_output = round(12.6 + random.uniform(-0.4, 0.4), 1)
     
     return {
         "battery_soc": soc,

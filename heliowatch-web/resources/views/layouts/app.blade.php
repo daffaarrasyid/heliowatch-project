@@ -135,7 +135,7 @@
         function showToast(title, message) {
             document.getElementById('toast-title').innerText = title;
             document.getElementById('toast-message').innerText = message;
-            
+
             const toast = document.getElementById('global-alert-toast');
             toast.classList.remove('translate-x-[150%]', 'opacity-0');
             toast.classList.add('translate-x-0', 'opacity-100');
@@ -174,38 +174,61 @@
                 const timeElements = document.querySelectorAll('#current-time');
                 if (timeElements.length > 0) {
                     const now = new Date();
-                    const options = {timeZone: appTimezone, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false};
+                    const options = {
+                        timeZone: appTimezone,
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    };
                     let timeString = now.toLocaleDateString('en-GB', options).replace(',', ' •');
                     timeElements.forEach(el => el.innerText = timeString + ' WIB');
                 }
             }, 1000);
 
             // AJAX polling for live data
-            const isSoundEnabled = {{ isset($globalSettings['alert_sounds']) && $globalSettings['alert_sounds'] == '1' ? 'true' : 'false' }};
+            const isSoundEnabled =
+                {{ isset($globalSettings['alert_sounds']) && $globalSettings['alert_sounds'] == '1' ? 'true' : 'false' }};
             let alertAlreadyTriggered = false;
             setInterval(async function() {
                 try {
-                    const response = await fetch("{{ route('api.live') ?? '/live-data' }}", { cache: 'no-store' });
+                    // 1. Tangkap skenario apa yang sedang berjalan di URL (jika ada)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const currentScenario = urlParams.get('scenario') || 'normal';
+
+                    // 2. Kirimkan skenario tersebut ke backend saat auto-refresh
+                    const response = await fetch(
+                        `{{ route('api.live') ?? '/live-data' }}?scenario=${currentScenario}`, {
+                            cache: 'no-store'
+                        });
                     const result = await response.json();
-                    if(result.status === 'success') {
+                    if (result.status === 'success') {
                         const kpi = result.data;
                         const sensor = kpi.sensor_snapshot;
-                        
+
                         // Check alerts
                         if (kpi.is_ramp_alert || kpi.is_soc_alert) {
                             if (!alertAlreadyTriggered) {
-                                let alertMsg = kpi.is_ramp_alert ? 'High Ramp Risk detected. Grid instability possible.' : 'Battery SoC has dropped below the warning threshold.';
+                                let alertMsg = kpi.is_ramp_alert ?
+                                    'High Ramp Risk detected. Grid instability possible.' :
+                                    'Battery SoC has dropped below the warning threshold.';
                                 showToast('System Warning', alertMsg);
-                                if (isSoundEnabled) document.getElementById('alert-sound').play().catch(e => {});
+                                if (isSoundEnabled) document.getElementById('alert-sound').play().catch(
+                                    e => {});
                                 alertAlreadyTriggered = true;
                             }
                         } else {
                             alertAlreadyTriggered = false;
                             closeToast();
                         }
-                        
+
                         // Update dashboard values
-                        const updateText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+                        const updateText = (id, val) => {
+                            if (document.getElementById(id)) document.getElementById(id).innerText =
+                                val;
+                        };
                         updateText('val-srs', kpi.reliability_score);
                         updateText('val-ramp', kpi.ramp_risk);
                         updateText('val-bat-margin', kpi.battery_margin);
@@ -216,33 +239,44 @@
                         updateText('val-circle-soc', sensor.battery_soc);
                         updateText('val-charge', sensor.charging_power);
                         updateText('val-discharge', sensor.discharging_power);
-                        
+
                         // Update alert indicators
-                        if(document.getElementById('alert-indicator')) document.getElementById('alert-indicator').classList.toggle('hidden', !kpi.is_ramp_alert && !kpi.is_soc_alert);
-                        if(document.getElementById('alert-ramp')) document.getElementById('alert-ramp').style.display = kpi.is_ramp_alert ? 'flex' : 'none';
-                        if(document.getElementById('alert-soc')) document.getElementById('alert-soc').style.display = kpi.is_soc_alert ? 'flex' : 'none';
-                        if(document.getElementById('alert-normal')) document.getElementById('alert-normal').style.display = (!kpi.is_ramp_alert && !kpi.is_soc_alert) ? 'flex' : 'none';
-                        
+                        if (document.getElementById('alert-indicator')) document.getElementById(
+                            'alert-indicator').classList.toggle('hidden', !kpi.is_ramp_alert && !kpi
+                            .is_soc_alert);
+                        if (document.getElementById('alert-ramp')) document.getElementById('alert-ramp')
+                            .style.display = kpi.is_ramp_alert ? 'flex' : 'none';
+                        if (document.getElementById('alert-soc')) document.getElementById('alert-soc')
+                            .style.display = kpi.is_soc_alert ? 'flex' : 'none';
+                        if (document.getElementById('alert-normal')) document.getElementById(
+                            'alert-normal').style.display = (!kpi.is_ramp_alert && !kpi
+                            .is_soc_alert) ? 'flex' : 'none';
+
                         // Update battery circle
-                        if(document.getElementById('battery-circle')) {
+                        if (document.getElementById('battery-circle')) {
                             let socVal = sensor.battery_soc;
-                            let socColor = socVal > 30 ? '#079844' : (socVal > 15 ? '#F59E0B' : '#EF4444');
-                            let emptyColor = document.documentElement.classList.contains('dark') ? '#334155' : '#f3f4f6';
-                            document.getElementById('battery-circle').style.background = `conic-gradient(${socColor} ${socVal}%, ${emptyColor} 0)`;
+                            let socColor = socVal > 30 ? '#079844' : (socVal > 15 ? '#F59E0B' :
+                                '#EF4444');
+                            let emptyColor = document.documentElement.classList.contains('dark') ?
+                                '#334155' : '#f3f4f6';
+                            document.getElementById('battery-circle').style.background =
+                                `conic-gradient(${socColor} ${socVal}%, ${emptyColor} 0)`;
                         }
                     }
                 } catch (error) {
                     console.error("Live data fetch error:", error);
                 }
             }, 5000);
-            
+
             // Sidebar time update
             const sidebarTimeEl = document.getElementById('sidebar-time');
             if (sidebarTimeEl) {
                 const sidebarTimeUrl = "{{ route('api.live') }}";
                 async function refreshSidebarTime() {
                     try {
-                        const response = await fetch(sidebarTimeUrl, {cache: 'no-store'});
+                        const response = await fetch(sidebarTimeUrl, {
+                            cache: 'no-store'
+                        });
                         const payload = await response.json();
                         if (payload?.data?.server_time) sidebarTimeEl.innerText = payload.data.server_time;
                     } catch (error) {}
@@ -250,9 +284,10 @@
                 refreshSidebarTime();
                 setInterval(refreshSidebarTime, 1000);
             }
-            
+
             // Auto-refresh page based on settings
-            const refreshSeconds = {{ isset($globalSettings['refresh_interval']) ? (int) $globalSettings['refresh_interval'] : 30 }};
+            const refreshSeconds =
+                {{ isset($globalSettings['refresh_interval']) ? (int) $globalSettings['refresh_interval'] : 30 }};
             const currentPath = window.location.pathname;
             const isSettingsPage = currentPath.includes('/settings');
             const isDashboardPage = currentPath === '/' || currentPath.includes('/dashboard');

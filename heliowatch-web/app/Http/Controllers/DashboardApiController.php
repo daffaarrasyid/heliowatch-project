@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http; // Wajib dipanggil
 use Carbon\Carbon;
@@ -9,7 +10,7 @@ use App\Models\Setting;
 
 class DashboardApiController extends Controller
 {
-    public function getLiveData()
+    public function getLiveData(Request $request)
     {
         $settings = Cache::rememberForever('global_settings', function () {
             try {
@@ -24,12 +25,14 @@ class DashboardApiController extends Controller
         $currentTimezone = $settings['timezone'] ?? 'Asia/Jakarta';
         $serverTime = Carbon::now($currentTimezone)->format('h:i A');
 
+        //TANGKAP SKENARIO DARI JAVASCRIPT
+        $scenario = $request->query('scenario', 'normal');
+
         try {
-            // MENGAMBIL DATA ASLI DARI PYTHON AI (Bukan rand() lagi)
             $response = Http::timeout(5)->get('http://127.0.0.1:8000/api/dashboard-kpi', [
                 'ramp_threshold' => $rampThreshold,
                 'soc_warning' => $socWarningThreshold,
-                'scenario' => 'normal'
+                'scenario' => $scenario 
             ]);
 
             if ($response->successful()) {
