@@ -579,7 +579,7 @@
                         }
                     })
                     .catch(err => console.log("Gagal mengambil data live:", err));
-            }, 5000); // 5000ms = 5 detik
+            }, 5000);
 
         });
     </script>
