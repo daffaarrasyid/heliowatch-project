@@ -4,12 +4,11 @@ import pickle
 import os
 
 print("1. Membaca data FEATURES Microgrid...")
-# Membaca dataset asli milik tim lo
 df = pd.read_excel("microgrid_features (1).xlsx")
 
 print("2. Memilih 15 fitur unggulan (Edge-Constrained Feature Selection)...")
 
-# Memanggil 15 fitur yang sudah ada di Excel lo sesuai tabel di atas
+# Memanggil 15 fitur yang sudah ada di Excel
 features = [
     'irradiance_wm2', 
     'air_temp_c', 

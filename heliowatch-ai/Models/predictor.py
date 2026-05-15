@@ -83,6 +83,14 @@ def predict_24_hours(latitude=-7.19, longitude=108.03, base_temp=24.0, scenario=
         if scenario == "cloud_cover" and 10 <= i <= 14:
             radiasi_api[i] = radiasi_api[i] * 0.2
             
+        # # ========================================================
+        # # --- SIMULASI SENSOR RUSAK (BUAT NGETES REVISI #4) ---
+        # if i == 12: 
+        #     radiasi_api[i] = 99999.0  # Jam 12 siang sensor error ngirim data 99 ribu W/m2!
+        # if i == 13: 
+        #     radiasi_api[i] = None     # Jam 13 siang sensor mati tertutup burung (data kosong)
+        # # ========================================================
+        
         jam_str = f"{i:02d}:00" 
         
         # --- REVISI #4: PEMBERSIHAN DATA ---
